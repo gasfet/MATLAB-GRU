@@ -153,7 +153,7 @@ for e = 1:max_epochs
             % new hidden state
             h(:, t) = (1.0 - z(:, t)) .* h(:, t - 1) + z(:, t) .* u(:, t);
             
-            % update y
+            % update y 출력 계산
             y(:, t) = Why * h(:, t) + by;
             
             % compute probs
@@ -167,7 +167,7 @@ for e = 1:max_epochs
         %bits/symbol
         loss = loss/seq_length;
         
-        % backward pass:
+        % backward pass:   역전파 및 기울기 계산
         for t = seq_length: - 1:2
             
             % dy (global error)
@@ -210,7 +210,6 @@ for e = 1:max_epochs
         % end
         
         % clip gradients to some range
-
         dWhy = clip(dWhy, -5, 5);
         dby = clip(dby, -5, 5);
         
@@ -226,7 +225,7 @@ for e = 1:max_epochs
         dWu = clip(dWu, -5, 5);
         dbu = clip(dbu, -5, 5);
         
-        % % adjust weights, adagrad:
+        % % adjust weights, adagrad:  가중치 계산
         mWhy = mWhy + dWhy .* dWhy;
         mby = mby + dby .* dby;
         
@@ -270,6 +269,7 @@ for e = 1:max_epochs
             fprintf('\n\nGenerating some text...\n');
             
             % random h,c seeds
+            % 학습된 모델로 Text를 생성한다. 
             t = generate_gru(	Uz, Wz, bz, ...
                 Ur, Wr, br, ...
                 Uu, Wu, bu, ...
