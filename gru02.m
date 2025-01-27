@@ -1,5 +1,28 @@
 function gru02()
-
+    % 함수는 GRU(Gated Recurrent Unit) 모델을 사용하여 텍스트 데이터를 학습하고, 학습된 모델을 통해 텍스트를 생성하는 역할을 합니다. 이 함수는 다음과 같은 주요 작업을 수행합니다:
+    % 주요 작업
+    % 1.	데이터 읽기 및 전처리
+    % •	data = read_raw('alice29.txt');: 텍스트 파일을 읽어와서 원시 바이트 스트림으로 저장합니다.
+    % •	text_length = size(data, 1);: 텍스트 데이터의 길이를 계산합니다.
+    % •	symbols = unique(data);: 텍스트 데이터에서 고유한 문자를 추출합니다.
+    % •	alphabet_size = size(symbols, 1);: 고유한 문자의 수를 계산합니다.
+    % •	codes = eye(n_in);: 원-핫 인코딩을 위한 코드 매트릭스를 생성합니다.
+    % 2.	하이퍼파라미터 및 모델 파라미터 초기화
+    % •	hidden_size, seq_length, learning_rate, vocab_size 등의 하이퍼파라미터를 설정합니다.
+    % •	GRU 모델의 가중치와 바이어스를 초기화합니다 (Wz, Uz, bz, Wr, Ur, br, Wu, Uu, bu, Why, by).
+    % 3.	학습 루프
+    % •	for e = 1:max_epochs: 최대 에포크 수만큼 학습을 반복합니다.
+    % •	sub1 함수를 호출하여 각 에포크에서 텍스트 데이터를 여러 시퀀스로 나누어 처리합니다.
+    % 4.	순전파 및 역전파
+    % •	sub2 함수에서 순전파(sub9)와 역전파(sub8)를 수행하여 모델의 가중치를 업데이트합니다.
+    % •	probs 변수를 사용하여 각 시간 단계에서 모델이 예측한 다음 문자의 확률 분포를 계산합니다.
+    % •	교차 엔트로피 손실을 계산하고, 이를 통해 모델의 성능을 평가합니다.
+    % 5.	기울기 클리핑 및 가중치 업데이트
+    % •	sub7 함수에서 기울기를 클리핑하여 기울기 폭발을 방지합니다.
+    % •	sub6 함수에서 Adagrad 알고리즘을 사용하여 가중치와 바이어스를 업데이트합니다.
+    % 6.	상태 업데이트 및 통계 출력
+    % •	sub5 함수에서 각 상태(z, r, u, rh, h, y, probs)를 다음 시간 단계로 이동합니다.
+    % •	sub4 함수에서 손실 기록을 업데이트하고, 일정 시간마다 학습 통계를 출력하며, 학습된 모델을 사용하여 텍스트를 생성합니다.
     %read raw byte stream
     data = read_raw('alice29.txt');
 
@@ -26,7 +49,7 @@ function gru02()
 
     % hyperparameters
     hidden_size = 256; % size of hidden layer of neurons
-    seq_length = 50; % number of steps to unroll the RNN for
+    seq_length = 50; % number of steps to unroll the RNN for  ==> 정답을 만들기 위해 필요한 시점 개수 time step
     learning_rate = 1e-1;
     vocab_size = n_in;
 
@@ -71,6 +94,11 @@ function gru02()
     target = zeros(vocab_size, seq_length);
     y = zeros(vocab_size, seq_length);
     dy = zeros(vocab_size, seq_length);
+    % 변수 probs는 GRU 모델의 출력 확률을 저장하는 역할을 합니다. 각 시간 단계에서 모델이 예측한 다음 문자의 확률 분포를 나타냅니다.
+    % 역할
+    % 1.	출력 확률 계산: probs는 각 시간 단계에서 모델이 예측한 다음 문자의 확률 분포를 저장합니다. 이는 소프트맥스 함수에 의해 계산됩니다.
+    % 2.	손실 계산: probs는 교차 엔트로피 손실을 계산하는 데 사용됩니다. 모델의 출력 확률과 실제 타겟 확률 간의 차이를 기반으로 손실을 계산합니다.
+    % 3.	역전파: probs는 역전파 과정에서 기울기를 계산하는 데 사용됩니다. 출력 확률과 실제 타겟 확률 간의 차이를 기반으로 기울기를 계산합니다.
     probs = zeros(vocab_size, seq_length);
 
     %using log2 (bits), initial guess
@@ -86,11 +114,21 @@ function gru02()
 
     function sub1()
 
+        % sub1 함수에서 sub2 함수를 반복 호출하는 이유는 GRU 모델을 학습하기 위해 텍스트 데이터를 여러 시퀀스로 나누어 처리하기 위함입니다. 각 시퀀스는 RNN의 한 번의 학습 단계에 해당하며, 이 과정을 통해 모델이 텍스트 데이터를 학습하게 됩니다.
+        % 반복 호출의 이유
+        % •	시퀀스 학습: GRU 모델은 시퀀스 데이터를 학습하는데 적합합니다. 텍스트 데이터를 일정 길이의 시퀀스로 나누어 각 시퀀스를 순차적으로 학습합니다.
+        % •	메모리 효율성: 전체 텍스트 데이터를 한 번에 처리하는 대신, 작은 시퀀스로 나누어 처리함으로써 메모리 사용을 효율적으로 관리할 수 있습니다.
+        % •	모델 업데이트: 각 시퀀스에 대해 순전파와 역전파를 수행하여 모델의 가중치를 업데이트합니다. 이를 통해 모델이 점진적으로 학습됩니다.
+
         %set some random context
         h(:, 1) = tanh(randn(size(h(:, 1))));
 
         %or zeros
         %h(:, 1) = zeros(size(h(:, 1)));
+
+        % •	beginning: 시작 지점을 랜덤하게 설정합니다. 이는 모델이 텍스트의 다양한 부분을 학습할 수 있도록 하기 위함입니다.
+        % •	ii: 반복 변수로, beginning부터 seq_length 간격으로 증가합니다.
+        % •	max_iterations - seq_length: 반복의 종료 지점으로, 텍스트 데이터의 끝에서 seq_length를 뺀 값입니다. 이는 마지막 시퀀스가 텍스트 범위를 벗어나지 않도록 하기 위함입니다.
 
         beginning = randi([2 1+seq_length]); %randomize starting point
         for ii = beginning:seq_length:max_iterations - seq_length
@@ -100,6 +138,15 @@ function gru02()
 
 
         function sub2()
+
+            % 1.	기울기 초기화: dby, dWhy, dy, dr, dz, du, drh, dUz, dUr, dUu, dWz, dWr, dWu, dbz, dbr, dbu, dhnext를 0으로 초기화합니다.
+            % 2.	다음 심볼을 가져옵니다: xs와 target을 설정합니다.
+            % 3.	순전파 수행: sub9 함수를 호출하여 순전파를 수행하고 손실을 계산합니다.
+            % 4.	역전파 수행: sub8 함수를 호출하여 역전파를 수행하고 기울기를 계산합니다.
+            % 5.	기울기 클리핑: sub7 함수를 호출하여 기울기를 클리핑합니다.
+            % 6.	가중치 조정: sub6 함수를 호출하여 가중치를 조정합니다.
+            % 7.	상태 업데이트: sub5 함수를 호출하여 상태를 업데이트합니다.
+            % 8.	손실을 부드럽게 업데이트하고, 일정 시간마다 통계를 출력하고 텍스트를 생성합니다: sub4 함수를 호출합니다.
 
             % reset grads
             dby = zeros(size(by));
@@ -125,6 +172,8 @@ function gru02()
             dhnext = zeros(size(h(:, 1)));
 
             % get next symbol
+            % xs 행렬은 256개의 행에서 열이 1부터 50까지 있으며, data에 대항하는 문자가 있는 곳에 값을 1을
+            % 가진다. 
             xs(:, 1:seq_length) = codes(data(ii - 1:ii + seq_length - 2), :)';
             target(:, 1:seq_length) = codes(data(ii:ii + seq_length - 1), :)';
 
@@ -167,6 +216,10 @@ function gru02()
             sub5();
 
             function sub9()
+                % sub9 함수는 순전파를 수행합니다:
+                % 1.	각 시간 단계 t에 대해 GRU 게이트를 계산합니다: z (업데이트 게이트), r (리셋 게이트), rh (리셋된 히든 상태), u (후보 히든 상태), h (새 히든 상태).
+                % 2.	출력 y를 계산하고 확률 probs를 계산합니다.
+                % 3.	교차 엔트로피 손실을 계산합니다.                
                 for t = 2:seq_length
 
                     % GRU gates
@@ -197,6 +250,11 @@ function gru02()
 
 
             function sub8()
+                % sub8 함수는 역전파를 수행합니다:
+                % 1.	각 시간 단계 t에 대해 출력의 기울기 dy를 계산합니다.
+                % 2.	GRU 게이트의 기울기 dz, du, drh, dr를 계산합니다.
+                % 3.	선형 계층의 기울기 dUz, dWz, dbz, dUr, dWr, dbr, dUu, dWu, dbu를 계산합니다.
+                % 4.	다음 히든 상태의 기울기 dhnext를 계산합니다.                
                 % backward pass:   역전파 및 기울기 계산
                 for t = seq_length: - 1:2
 
@@ -234,6 +292,8 @@ function gru02()
             end
 
             function sub7()
+                % sub7 함수는 기울기를 클리핑합니다:
+                % 1.	각 기울기 dWhy, dby, dUz, dWz, dbz, dUr, dWr, dbr, dUu, dWu, dbu를 지정된 범위로 클리핑합니다.                
                 % clip gradients to some range
                 dWhy = clip(dWhy, -5, 5);
                 dby = clip(dby, -5, 5);
@@ -252,6 +312,8 @@ function gru02()
             end
 
             function sub6()
+                % sub6 함수는 가중치를 조정합니다:
+                % 1.	Adagrad를 사용하여 가중치와 바이어스를 업데이트합니다: Why, by, Uz, Wz, bz, Ur, Wr, br, Uu, Wu, bu.                
                 % % adjust weights, adagrad:  가중치 계산
                 mWhy = mWhy + dWhy .* dWhy;
                 mby = mby + dby .* dby;
@@ -285,6 +347,8 @@ function gru02()
             end
 
             function sub5()
+                % sub5 함수는 상태를 업데이트합니다:
+                % 1.	각 상태 z, r, u, rh, h, y, probs를 다음 시간 단계로 이동합니다.                
                 %carry
                 z(:, 1) = z(:, seq_length);
                 r(:, 1) = r(:, seq_length);
@@ -296,6 +360,11 @@ function gru02()
             end
 
             function sub4()
+                % sub4 함수는 통계를 출력하고 텍스트를 생성합니다:
+                % 1.	손실 기록을 업데이트합니다.
+                % 2.	현재 에포크와 손실을 출력합니다.
+                % 3.	학습된 모델을 사용하여 텍스트를 생성합니다.
+                % 4.	플롯을 업데이트하여 학습 과정을 시각화합니다.                
                 loss_history = [loss_history smooth_loss];
 
                 fprintf('[epoch %d] %d %% text read... smooth loss = %.3f\n', e, round(100 * ii / text_length), smooth_loss);
